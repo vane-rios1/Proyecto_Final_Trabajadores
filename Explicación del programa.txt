@@ -1,0 +1,17 @@
+
+Explicación de la parte del Programa "Registro de Trabajadores del Hospital"
+
+El objetivo del programa es registrar y llevar un control básico de los trabajadores de un hospital, guardando datos personales como nombre, edad, CURP, teléfono, etc.
+
+
+¿Qué hace esta parte del programa?
+
+Esta parte del programa muestra una ventana con un menú a la izquierda y un área de trabajo a la derecha. Desde el menú, puedes hacer lo siguiente:
+
+Bienvenida: Muestra un mensaje inicial de bienvenida.
+
+Registrar: Muestra un formulario donde puedes escribir los datos de un trabajador.
+
+Trabajadores: Muestra una lista con todos los trabajadores que se han registrado.
+
+Salir: Cierra la aplicación.
