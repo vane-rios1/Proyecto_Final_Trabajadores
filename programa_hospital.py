@@ -1,81 +1,112 @@
 import tkinter as tk
 from tkinter import messagebox
 
-# Parte del Programa "Registro de Trabajadores del Hospital"
+class Trabajador:
+    def __init__(self, nombre, edad, genero, curp, nss, control, telefono, domicilio):
+        self.nombre = nombre
+        self.edad = edad
+        self.genero = genero
+        self.curp = curp
+        self.nss = nss
+        self.control = control
+        self.telefono = telefono
+        self.domicilio = domicilio
 
-# Lista para almacenar trabajadores
-trabajadores = []
+    def __str__(self):
+        return (f"{self.nombre} - Edad: {self.edad} - Género: {self.genero} - CURP: {self.curp} - "
+                f"NSS: {self.nss} - Número de control: {self.control} - "
+                f"Teléfono: {self.telefono} - Domicilio: {self.domicilio}")
 
-def limpiar_area_dinamica():
-    for widget in area_dinamica.winfo_children():
-        widget.destroy()
+class AppHospital:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Registro de Trabajadores")
+        self.root.geometry("600x500")
+        self.root.config(bg="lightblue")
 
-def pantalla_inicio():
-    limpiar_area_dinamica()
-    tk.Label(area_dinamica, text="¡Bienvenido/a!", font=("Arial", 18, "bold")).pack(pady=20)
-    tk.Label(area_dinamica, text="Hola, esta aplicación lleva el control del registro los trabajadores de este hospital .", font=("Arial", 12)).pack(pady=10)
+        self.trabajadores = []
 
-def pantalla_registro():
-    limpiar_area_dinamica()
-    tk.Label(area_dinamica, text="Datos del trabajador", font=("Arial", 14, "bold")).pack(pady=10)
+        self.menu = tk.Frame(root, bg="lightblue", width=150)
+        self.menu.pack(side="left", fill="y")
 
-    entradas = {}
+        self.area_dinamica = tk.Frame(root, bg="white")
+        self.area_dinamica.pack(side="right", expand=True, fill="both")
 
-    def crear_entrada(campo):
-        tk.Label(area_dinamica, text=f"{campo}:").pack()
-        entrada = tk.Entry(area_dinamica)
-        entrada.pack()
-        entradas[campo] = entrada
+        self.crear_menu()
+        self.pantalla_inicio()
 
-    campos = [
-        "Nombre", "Edad", "Género", "CURP", "No. de Seguro Social",
-        "No. de Control", "Teléfono", "Domicilio"
-    ]
-    
-    for campo in campos:
-        crear_entrada(campo)
+    def limpiar_area_dinamica(self):
+        for widget in self.area_dinamica.winfo_children():
+            widget.destroy()
 
-    def guardar_datos():
-        datos = {campo: entrada.get() for campo, entrada in entradas.items()}
+    def crear_menu(self):
+        tk.Button(self.menu, text="Bienvenida", command=self.pantalla_inicio, width=18).pack(pady=5)
+        tk.Button(self.menu, text="Registrar", command=self.pantalla_registro, width=18).pack(pady=5)
+        tk.Button(self.menu, text="Trabajadores", command=self.pantalla_historial, width=18).pack(pady=20)
+        tk.Button(self.menu, text="Salir", command=self.root.destroy, width=18).pack(pady=30)
+
+    def pantalla_inicio(self):
+        self.limpiar_area_dinamica()
+        tk.Label(self.area_dinamica, text="¡Bienvenido/a!", font=("Arial", 18, "bold")).pack(pady=20)
+        tk.Label(self.area_dinamica, text="Hola, esta aplicación lleva el control del registro de los trabajadores de este hospital.", font=("Arial", 12)).pack(pady=10)
+
+    def pantalla_registro(self):
+        self.limpiar_area_dinamica()
+        tk.Label(self.area_dinamica, text="Datos del trabajador", font=("Arial", 14, "bold")).pack(pady=10)
+
+        campos = [
+            "Nombre", "Edad", "Género", "CURP", "No. de Seguro Social",
+            "No. de Control", "Teléfono", "Domicilio"
+        ]
+        self.entradas = {}
+
+        for campo in campos:
+            tk.Label(self.area_dinamica, text=f"{campo}:").pack()
+            entrada = tk.Entry(self.area_dinamica)
+            entrada.pack()
+            self.entradas[campo] = entrada
+
+        tk.Button(self.area_dinamica, text="Guardar datos", command=self.guardar_datos).pack(pady=10)
+
+    def guardar_datos(self):
+        datos = {campo: entrada.get() for campo, entrada in self.entradas.items()}
 
         if not all(datos.values()):
             messagebox.showwarning("Campos incompletos", "Por favor completa todos los campos.")
             return
 
-        trabajadores.append(datos)
+       
+
+        nuevo_trabajador = Trabajador(
+            datos["Nombre"],
+            datos["Edad"], 
+            datos["Género"],
+            datos["CURP"],
+            datos["No. de Seguro Social"],
+            datos["No. de Control"],
+            datos["Teléfono"],
+            datos["Domicilio"]
+        )
+
+        self.trabajadores.append(nuevo_trabajador)
         messagebox.showinfo("Guardado", "Datos del trabajador guardados correctamente.")
-        pantalla_registro()  # Limpia el formulario
 
-    tk.Button(area_dinamica, text="Guardar datos", command=guardar_datos).pack(pady=10)
+        for entrada in self.entradas.values():
+            entrada.delete(0, tk.END)
 
-def pantalla_historial():
-    limpiar_area_dinamica()
-    tk.Label(area_dinamica, text="Historial de Trabajadores", font=("Arial", 14, "bold")).pack(pady=10)
+    def pantalla_historial(self):
+        self.limpiar_area_dinamica()
+        tk.Label(self.area_dinamica, text="Historial de Trabajadores", font=("Arial", 14, "bold")).pack(pady=10)
 
-    if trabajadores:
-        for i, t in enumerate(trabajadores, 1):
-            info = f"{i}. {t['Nombre']} - Edad: {t['Edad']} - Género: {t['Género']} - CURP: {t['CURP']} - NSS: {t['No. de Seguro Social']} - Numero de control: {t['No. de Control']} - Teléfono: {t['Teléfono']}  - Domicilio: {t['Domicilio']}"
-            tk.Label(area_dinamica, text=info, anchor="w", justify="left").pack()
-    else:
-        tk.Label(area_dinamica, text="No hay trabajadores registrados aún.").pack()
+        if self.trabajadores:
+            for i, t in enumerate(self.trabajadores, 1):
+                tk.Label(self.area_dinamica, text=f"{i}. {str(t)}", anchor="w", justify="left", wraplength=550).pack()
+        else:
+            tk.Label(self.area_dinamica, text="No hay trabajadores registrados aún.").pack()
 
-# Ventana principal
-ventana = tk.Tk()
-ventana.title("Registro de Trabajadores")
-ventana.geometry("600x500")
-ventana.config(bg="lightblue")
-
-menu = tk.Frame(ventana, bg="lightblue", width=150)
-menu.pack(side="left", fill="y")
-
-area_dinamica = tk.Frame(ventana, bg="white")
-area_dinamica.pack(side="right", expand=True, fill="both")
-
-# Menú de navegación
-tk.Button(menu, text="Bienvenida", command=pantalla_inicio, width=18).pack(pady=5)
-tk.Button(menu, text="Registrar", command=pantalla_registro, width=18).pack(pady=5)
-tk.Button(menu, text="Trabajadores", command=pantalla_historial, width=18).pack(pady=20)
-tk.Button(menu, text="Salir", command=ventana.destroy, width=18).pack(pady=30)
-
-pantalla_inicio()
-ventana.mainloop()
+# Crear la aplicación
+if __name__ == "__main__":
+    ventana = tk.Tk()
+    app = AppHospital(ventana)
+    ventana.mainloop()
+    
