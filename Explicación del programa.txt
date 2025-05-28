@@ -1,17 +1,49 @@
+🧠 ¿Qué hace el programa?
 
-Explicación de la parte del Programa "Registro de Trabajadores del Hospital"
+El programa es un sistema de gestión hospitalaria con una interfaz gráfica creada con Tkinter (biblioteca de Python). Permite realizar lo siguiente:
 
-El objetivo del programa es registrar y llevar un control básico de los trabajadores de un hospital, guardando datos personales como nombre, edad, CURP, teléfono, etc.
+* Registrar trabajadores del hospital con datos personales y laborales como nombre, CURP, NSS, teléfono, etc.
+* Ver el historial de trabajadores registrados.
+* Registrar asistencias de trabajadores, indicando nombre, ID y departamento.
+* Visualizar un historial de asistencias registradas en una tabla.
+* Salir del sistema con confirmación.
+* El programa está organizado con una estructura de clases, lo que mejora su mantenimiento y escalabilidad.
 
 
-¿Qué hace esta parte del programa?
+✅ Ventajas  y  beneficios
 
-Esta parte del programa muestra una ventana con un menú a la izquierda y un área de trabajo a la derecha. Desde el menú, puedes hacer lo siguiente:
+* Interfaz amigable:
+  - Fácil de usar, intuitiva, con botones y formularios bien definidos.
+  - Ideal para personal administrativo sin conocimientos técnicos.
 
-Bienvenida: Muestra un mensaje inicial de bienvenida.
+* Organización de la información:
+  - Separación clara entre el registro de trabajadores y el de asistencias.
+ - Acceso rápido al historial de registros.
 
-Registrar: Muestra un formulario donde puedes escribir los datos de un trabajador.
+* Escalabilidad:
+  - Al estar basado en clases, se puede extender fácilmente para incluir nuevos módulos.
 
-Trabajadores: Muestra una lista con todos los trabajadores que se han registrado.
+* Retroalimentación al usuario:
+  - Uso de messagebox para avisos, advertencias y confirmaciones, lo que mejora la experiencia del usuario.
 
-Salir: Cierra la aplicación.
+* Registro con fecha y hora:
+  - Cada asistencia se registra con la marca de tiempo, lo cual es útil para control de horarios.
+
+* Reutilización de código:
+  - Funciones reutilizables para limpiar pantallas, actualizar tablas, etc.
+
+
+
+💪 Fortalezas del programa
+
+* Modularidad: 
+  - Separación de funcionalidades en métodos bien definidos.
+
+* Código mantenible:
+  - Gracias a la orientación a objetos, es fácil modificar o agregar nuevas funcionalidades.
+
+* Buena práctica visual:
+  - Los datos están bien distribuidos en pantallas, lo que facilita su lectura.
+
+* Sin dependencias externas:
+  - Todo está hecho con bibliotecas estándar de Python (tkinter, datetime), por lo que no necesita instalaciones complejas
