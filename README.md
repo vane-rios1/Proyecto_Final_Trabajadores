@@ -1,0 +1,45 @@
+# SISTEMA HOSPITALARIO RÍOS
+
+# Funcionalidades del Programa
+
+# Interfaz Gráfica de Usuario (GUI)
+El programa crea una ventana principal con un menú lateral y un área de contenido dinámico. Esto permite al usuario navegar entre diferentes módulos o secciones del sistema haciendo clic en los botones del menú.
+
+# BIENVENIDA
+El programa te resive con una bienvenida que dice "HOSPITAL RÍOS", "SISTEMA HOSPITALARIO".
+
+# REGISTRO DE TRABAJADORES 
+ - Captura de Datos: Permite ingresar una gran cantidad de información sobre cada trabajador, como nombre, edad, CURP, NSS, domicilio, número de control, género, turno, horario, departamento, puesto, jornada, fecha de nacimiento, tipo de contratación, grado de estudios, correo electrónico y fecha de ingreso.
+ - Validación: Antes de registrar a un trabajador, el programa verifica que todos los campos obligatorios estén llenos para evitar registros incompletos.
+ - Control de Cupo: Impide registrar más de 10 trabajadores en una combinación específica de "Puesto" y "Jornada", lo que simula una limitación de personal por área o turno.
+ - Actualización Automática: Al registrar un trabajador, se actualizan las listas internas que alimentan otros módulos, como el de asistencia y vacaciones, asegurando que los nuevos empleados estén disponibles para otras operaciones.
+ - Visualización: Muestra un historial de todos los trabajadores registrados en una tabla, permitiendo ver la información de un vistazo.
+
+# REGISTRO DE ASISTENCIA 
+ - Selección por Número de Control: Permite seleccionar a un trabajador específico utilizando su número de control. Al hacerlo, el sistema carga automáticamente sus datos como nombre, departamento, puesto, turno, etc.
+ - Registro de Entrada y Salida: Registra la hora de entrada y salida de los trabajadores.
+ - Cálculo de Estado:
+   * Asistencia: Si la entrada está dentro de un rango de 10 minutos (antes o después) de la hora de inicio de su turno.
+   * Retardo menor: Si la entrada es entre 10 y 30 minutos después de la hora de inicio.
+   * Retardo mayor: Si la entrada es más de 30 minutos después de la hora de inicio.
+ - Contador de Retardos y Faltas:
+   * Acumula retardos menores y mayores por trabajador.
+   * 3 retardos menores se convierten automáticamente en 1 falta.
+   * 2 retardos mayores se convierten automáticamente en 1 falta.
+   * Al asignar una falta, se notifica al usuario con un mensaje.
+ - Cálculo de Horas Extra: Calcula el tiempo que un trabajador permanece en sus instalaciones después de la hora de fin de su turno.
+ - Historial de Asistencia: Muestra todos los registros de asistencia con detalles como fecha, hora de entrada, hora de salida, estado y horas extra en una tabla.
+
+# REGISTRO DE VACACIONES Y PERMISOS
+ - Solicitud de Ausencia: Permite a los trabajadores o administradores registrar solicitudes de:
+   * Vacaciones
+   * Días Económicos
+   * Periodos Extraordinarios
+ - Fechas y Observaciones: Se especifican las fechas de inicio y fin, así como cualquier observación relevante.
+ - Cálculo de Días Hábiles: El sistema calcula automáticamente los días hábiles dentro del período solicitado, tomando en cuenta:
+   * La jornada laboral específica de cada trabajador (ej. lunes a viernes, solo fines de semana).
+   * Una lista predefinida de días festivos, excluyéndolos del conteo de días hábiles.
+ - Historial de Solicitudes: Muestra todas las solicitudes registradas en una tabla para un seguimiento claro.
+
+# RESUMEN
+En resumen, el programa es una herramienta integral para la gestión de recursos humanos en un entorno hospitalario, enfocándose en el registro de personal, el control de su asistencia y la administración de sus solicitudes de ausencia, con lógicas incorporadas para manejar retardos, faltas y calcular días trabajados.
