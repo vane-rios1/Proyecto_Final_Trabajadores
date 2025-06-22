@@ -2,491 +2,541 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 from datetime import datetime, timedelta
 
-# -- Datos y estructuras --
+# --- Gestión de Datos (Mejor encapsulado) ---
+class HospitalData:
+    def __init__(self):
+        self.puestos_por_departamento = {
+            "Departamentos Médicos Asistenciales": [
+                "Medicina Interna", "Pediatría", "Ginecología y Obstetricia", "Cirugía General",
+                "Urgencias o Emergencias", "Traumatología y Ortopedia", "Cardiología", "Neurología",
+                "Psiquiatría y Salud Mental", "Oncología", "Urología", "Dermatología", "Oftalmología",
+                "Otorrinolaringología (ORL)", "Anestesiología y Reanimación"
+            ],
+            "Departamentos de Apoyo Diagnóstico y Terapéutico": [
+                "Laboratorio Clínico", "Imagenología", "Farmacia Hospitalaria", "Banco de Sangre",
+                "Rehabilitación Física y Terapia Ocupacional", "Nutrición y Dietética", "Endoscopía", "Patología"
+            ],
+            "Departamentos de Enfermería": [
+                "Enfermería General", "Cuidados Intensivos", "Pediatría (enfermería pediátrica)", "Sala de Partos y Neonatología"
+            ],
+            "Departamentos Administrativos": [
+                "Admisión y Registro", "Recursos Humanos", "Finanzas y Contabilidad", "Compras y Almacén",
+                "Tecnologías de la Información (TI)", "Trabajo Social", "Archivo Clínico o Historias Médicas",
+                "Calidad y Seguridad del Paciente"
+            ],
+            "Departamentos Generales o de Apoyo Operativo": [
+                "Limpieza y Mantenimiento", "Lavandería", "Cocina y Alimentación", "Seguridad y Vigilancia",
+                "Transporte Interno de Pacientes", "Gestión Ambiental y Residuos Hospitalarios"
+            ]
+        }
+        self.cupo_jornada = {}
+        self.historial_trabajadores = []
+        self.asistencia_registros = []
+        self.vacaciones_registros = []
+        self.dias_economicos_registros = []
+        self.periodo_extraordinario_registros = []
+        self.contador_retardos = {} # {'nc': {'retardo_menor': x, 'retardo_mayor': y, 'faltas': z}}
+        self.datos_trabajadores = {} # {id: datos_dict}
+        self.ids_control = [] # Lista para los números de control
 
-puestos_por_departamento = {
-    "Departamentos Médicos Asistenciales": [
-        "Medicina Interna", "Pediatría", "Ginecología y Obstetricia", "Cirugía General",
-        "Urgencias o Emergencias", "Traumatología y Ortopedia", "Cardiología", "Neurología",
-        "Psiquiatría y Salud Mental", "Oncología", "Urología", "Dermatología", "Oftalmología",
-        "Otorrinolaringología (ORL)", "Anestesiología y Reanimación"
-    ],
-    "Departamentos de Apoyo Diagnóstico y Terapéutico": [
-        "Laboratorio Clínico", "Imagenología", "Farmacia Hospitalaria", "Banco de Sangre",
-        "Rehabilitación Física y Terapia Ocupacional", "Nutrición y Dietética", "Endoscopía", "Patología"
-    ],
-    "Departamentos de Enfermería": [
-        "Enfermería General", "Cuidados Intensivos", "Pediatría (enfermería pediátrica)", "Sala de Partos y Neonatología"
-    ],
-    "Departamentos Administrativos": [
-        "Admisión y Registro", "Recursos Humanos", "Finanzas y Contabilidad", "Compras y Almacén",
-        "Tecnologías de la Información (TI)", "Trabajo Social", "Archivo Clínico o Historias Médicas",
-        "Calidad y Seguridad del Paciente"
-    ],
-    "Departamentos Generales o de Apoyo Operativo": [
-        "Limpieza y Mantenimiento", "Lavandería", "Cocina y Alimentación", "Seguridad y Vigilancia",
-        "Transporte Interno de Pacientes", "Gestión Ambiental y Residuos Hospitalarios"
-    ]
-}
-
-cupo_jornada = {}
-historial_trabajadores = []
-
-# Variables globales para frames y componentes
-bienvenida_frame = None
-registro_trabajadores_frame = None
-registro_asistencia_frame = None
-registro_vacaciones_frame = None
-tabla_trabajadores = None
-tabla_asistencia = None
-tabla_vacaciones = None
-puesto_combo = None
-
-# Datos globales para asistencia
-ids_control = []  # Se llenará desde historial_trabajadores
-datos_trabajadores = {}  # {id: datos_dict}
-
-# Variables para registro de asistencias
-contador_retardos = {}  # {'nc': {'retardo_menor': x, 'retardo_mayor': y, 'faltas': z}}
-asistencia_registros = []
-
-# Vacaciones y submódulos
-vacaciones_registros = []
-dias_economicos_registros = []
-periodo_extraordinario_registros = []
-
-# Días festivos ejemplo
-dias_festivos = {
-    "2025-01-01", "2025-02-03", "2025-03-17", "2025-04-17",
-    "2025-04-18", "2025-05-01", "2025-09-16", "2025-11-01",
-    "2025-11-02", "2025-11-18", "2025-12-25"
-}
-
-# Horarios turnos para asistencia
-horarios_turno = {
-    "TURNO MATUTINO": ("07:00", "15:00"),
-    "TURNO VESPERTINO": ("15:00", "23:00"),
-    "TURNO NOCTURNO": ("23:00", "07:00")
-}
-
-# --- Ventana principal ---
-ventana = tk.Tk()
-ventana.title("Sistema Hospitalario")
-ventana.geometry("1200x800")
-
-menu_lateral = tk.Frame(ventana, width=200, bg="#2c3e50")
-menu_lateral.pack(side="left", fill="y")
-
-contenido_dinamico = tk.Frame(ventana)
-contenido_dinamico.pack(side="right", fill="both", expand=True)
-
-def ocultar_frames():
-    for frame in contenido_dinamico.winfo_children():
-        frame.pack_forget()
-
-# --- Frame Bienvenida ---
-def crear_bienvenida_frame():
-    global bienvenida_frame
-    if bienvenida_frame is None:
-        bienvenida_frame = tk.Frame(contenido_dinamico, bg="#f0f0f0")
-        tk.Label(bienvenida_frame, text= "HOSPITAL RÍOS\nBienvenido al Sistema Hospitalario",
-                 font=("Helvetica", 24, "bold"), fg="#2b2b2b", bg="#f0f0f0").pack(pady=100)
-        tk.Label(bienvenida_frame, text="Seleccione una opción del menú para comenzar",
-                 font=("Helvetica", 14), fg="#444", bg="#f0f0f0").pack()
-
-def cargar_bienvenida():
-    ocultar_frames()
-    crear_bienvenida_frame()
-    bienvenida_frame.pack(expand=True, fill="both")
-
-# --- Frame Registro Trabajadores ---
-def crear_registro_trabajadores_frame():
-    global registro_trabajadores_frame, tabla_trabajadores, puesto_combo, ids_control, datos_trabajadores
-
-    if registro_trabajadores_frame is None:
-        registro_trabajadores_frame = tk.Frame(contenido_dinamico)
-
-        datos = {
-            "Nombre": tk.StringVar(),
-            "Edad": tk.StringVar(),
-            "CURP": tk.StringVar(),
-            "NSS": tk.StringVar(),
-            "Domicilio": tk.StringVar(),
-            "Teléfono": tk.StringVar(),
-            "Número de control": tk.StringVar(),
-            "Género": tk.StringVar(),
-            "Turno": tk.StringVar(),
-            "Horario": tk.StringVar(),
-            "Departamento": tk.StringVar(),
-            "Puesto": tk.StringVar(),
-            "Jornada": tk.StringVar(),
-            "Fecha de Nacimiento": tk.StringVar(),
-            "Tipo de Contratación": tk.StringVar(),
-            "Último Grado de Estudios": tk.StringVar(),
-            "Correo Electrónico": tk.StringVar(),
-            "Cédula Profesional": tk.StringVar(),
-            "Fecha de Ingreso": tk.StringVar()
+        self.dias_festivos = { # Ejemplo de días festivos
+            "2025-01-01", "2025-02-03", "2025-03-17", "2025-04-17",
+            "2025-04-18", "2025-05-01", "2025-09-16", "2025-11-01",
+            "2025-11-02", "2025-11-18", "2025-12-25"
         }
 
-        def actualizar_puestos(*args):
-            depto = datos["Departamento"].get()
-            puestos = puestos_por_departamento.get(depto, [])
-            puesto_combo['values'] = puestos
-            datos["Puesto"].set('')
+        self.horarios_turno = { # Horarios de turnos para asistencia
+            "TURNO MATUTINO": ("07:00", "15:00"),
+            "TURNO VESPERTINO": ("15:00", "23:00"),
+            "TURNO NOCTURNO": ("23:00", "07:00")
+        }
 
-        def validar_datos():
-            for campo, var in datos.items():
-                if not var.get().strip():
-                    messagebox.showwarning("Campo vacío", f"El campo '{campo}' es obligatorio.")
-                    return False
-            return True
+# --- Clase Padre: BaseModule ---
+class BaseModule:
+    def __init__(self, parent_frame, app_instance, data_store):
+        self.parent_frame = parent_frame
+        self.app = app_instance
+        self.data = data_store
+        self.frame = None
 
-        def registrar_trabajador():
-            if not validar_datos():
-                return
-            jornada = datos["Jornada"].get()
-            puesto = datos["Puesto"].get()
-            clave = f"{puesto}_{jornada}"
-            if cupo_jornada.get(clave, 0) >= 10:
-                messagebox.showerror("Cupo lleno", "Esta jornada ha llegado al límite de trabajadores.")
-                return
-            registro = {k: v.get() for k, v in datos.items()}
-            historial_trabajadores.append(registro)
-            cupo_jornada[clave] = cupo_jornada.get(clave, 0) + 1
-            # Actualizar IDs y datos para asistencias
-            ids_control.clear()
-            datos_trabajadores.clear()
-            for t in historial_trabajadores:
-                ids_control.append(t["Número de control"])
-                datos_trabajadores[t["Número de control"]] = t
+    def hide(self):
+        if self.frame:
+            self.frame.pack_forget()
 
-            for var in datos.values():
-                var.set('')
-            puesto_combo['values'] = []
-            actualizar_tabla_historial()
+    def show(self):
+        raise NotImplementedError("El método 'show' debe ser implementado por las clases hijas.")
 
-        entrada_frame = ttk.LabelFrame(registro_trabajadores_frame, text="Datos del Trabajador")
+    def create_labeled_frame(self, parent, text_label):
+        return ttk.LabelFrame(parent, text=text_label)
+
+    def create_treeview_with_scroll(self, parent, columns, heights=5):
+        tree = ttk.Treeview(parent, columns=columns, show="headings", height=heights)
+        for col in columns:
+            tree.heading(col, text=col)
+            tree.column(col, width=120, anchor="center")
+
+        vscroll = ttk.Scrollbar(parent, orient="vertical", command=tree.yview)
+        hscroll = ttk.Scrollbar(parent, orient="horizontal", command=tree.xview)
+        tree.configure(yscrollcommand=vscroll.set, xscrollcommand=hscroll.set)
+
+        return tree, vscroll, hscroll
+
+# --- Clase Hijo 1: BienvenidaModule ---
+class BienvenidaModule(BaseModule):
+    def __init__(self, parent_frame, app_instance, data_store):
+        super().__init__(parent_frame, app_instance, data_store)
+        self.frame = tk.Frame(self.parent_frame, bg="#f0f0f0")
+        # --- MODIFICACIÓN AQUÍ: Una sola etiqueta de bienvenida ---
+        self.welcome_label = tk.Label(self.frame,
+                                     text="HOSPITAL RÍOS\nBienvenido al Sistema Hospitalario\n\nSeleccione una opción del menú para comenzar",
+                                     font=("Helvetica", 24, "bold"), fg="#2b2b2b", bg="#f0f0f0", justify="center")
+        self.welcome_label.pack(pady=100) # La etiqueta se empaqueta aquí al inicializar el módulo.
+
+    def show(self):
+        # Solo necesitamos empaquetar el frame principal, ya que la etiqueta está dentro.
+        self.frame.pack(expand=True, fill="both")
+
+# --- Clase Hijo 2: RegistroTrabajadoresModule ---
+class RegistroTrabajadoresModule(BaseModule):
+    def __init__(self, parent_frame, app_instance, data_store):
+        super().__init__(parent_frame, app_instance, data_store)
+        self.frame = tk.Frame(self.parent_frame)
+        self.puesto_combo = None
+        self.tabla_trabajadores = None
+
+        self.datos_entrada = {
+            "Nombre": tk.StringVar(), "Edad": tk.StringVar(), "CURP": tk.StringVar(),
+            "NSS": tk.StringVar(), "Domicilio": tk.StringVar(), "Teléfono": tk.StringVar(),
+            "Número de control": tk.StringVar(), "Género": tk.StringVar(), "Turno": tk.StringVar(),
+            "Horario": tk.StringVar(), "Departamento": tk.StringVar(), "Puesto": tk.StringVar(),
+            "Jornada": tk.StringVar(), "Fecha de Nacimiento": tk.StringVar(),
+            "Tipo de Contratación": tk.StringVar(), "Último Grado de Estudios": tk.StringVar(),
+            "Correo Electrónico": tk.StringVar(), "Cédula Profesional": tk.StringVar(),
+            "Fecha de Ingreso": tk.StringVar()
+        }
+        self._create_widgets()
+
+    def _create_widgets(self):
+        entrada_frame = self.create_labeled_frame(self.frame, "Datos del Trabajador")
         entrada_frame.pack(padx=10, pady=10, fill="x")
 
-        num_campos_por_columna = (len(datos) + 1) // 2
-        etiquetas = list(datos.keys())
+        num_campos_por_columna = (len(self.datos_entrada) + 1) // 2
+        etiquetas = list(self.datos_entrada.keys())
 
         for i, etiqueta in enumerate(etiquetas):
             row = i % num_campos_por_columna
             col = (i // num_campos_por_columna) * 2
             ttk.Label(entrada_frame, text=etiqueta).grid(row=row, column=col, sticky="e", padx=5, pady=2)
 
-            if etiqueta in ["Género", "Turno", "Horario", "Departamento", "Jornada", "Tipo de Contratación", "Último Grado de Estudios"]:
-                combo = ttk.Combobox(entrada_frame, textvariable=datos[etiqueta], state="readonly")
-                if etiqueta == "Género":
-                    combo['values'] = ["FEMENINO", "MASCULINO", "OTRO"]
-                elif etiqueta == "Turno":
-                    combo['values'] = ["TURNO MATUTINO", "TURNO VESPERTINO", "TURNO NOCTURNO"]
-                elif etiqueta == "Horario":
-                    combo['values'] = ["07:00 a 15:00", "15:00 a 23:00", "23:00 a 07:00"]
-                elif etiqueta == "Departamento":
-                    combo['values'] = list(puestos_por_departamento.keys())
-                    combo.bind("<<ComboboxSelected>>", actualizar_puestos)
-                elif etiqueta == "Jornada":
-                    combo['values'] = ["LUNES A VIERNES", "LUNES, MIÉRCOLES, VIERNES", "MARTES Y JUEVES",
-                                       "SÁBADOS Y DOMINGOS", "DOMINGOS", "SÁBADOS, DOMINGOS, DÍAS FECTIVOS",
-                                       "MIÉRCOLES, JUEVES, VIERNES, SÁBADOS, DOMINGOS", "MARTES, JUEVES, SÁBADOS"]
-                elif etiqueta == "Tipo de Contratación":
-                    combo['values'] = ["BASIFICADOS", "HOMOLOGADOS", "REGULARIZADOS", "CONTRATO", "SUPLENTES O CUBREINCIDENCIAS", "OTRO"]
-                elif etiqueta == "Último Grado de Estudios":
-                    combo['values'] = ["EDUCACIÓN BÁSICA", "EDUCACIÓN MEDIA SUPERIOR", "EDUCACIÓN SUPERIOR"]
+            if etiqueta == "Departamento":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly")
+                combo['values'] = list(self.data.puestos_por_departamento.keys())
+                combo.bind("<<ComboboxSelected>>", self._actualizar_puestos)
                 combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
-                if etiqueta == "Puesto":
-                    puesto_combo = combo
             elif etiqueta == "Puesto":
-                puesto_combo = ttk.Combobox(entrada_frame, textvariable=datos[etiqueta], state="readonly")
-                puesto_combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+                self.puesto_combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly")
+                self.puesto_combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+            elif etiqueta == "Género":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly", values=["FEMENINO", "MASCULINO", "OTRO"])
+                combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+            elif etiqueta == "Turno":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly", values=list(self.data.horarios_turno.keys()))
+                combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+            elif etiqueta == "Horario":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly", values=["07:00 a 15:00", "15:00 a 23:00", "23:00 a 07:00"])
+                combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+            elif etiqueta == "Jornada":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly", values=["LUNES A VIERNES", "LUNES, MIÉRCOLES, VIERNES", "MARTES Y JUEVES", "SÁBADOS Y DOMINGOS", "DOMINGOS", "SÁBADOS, DOMINGOS, DÍAS FECTIVOS", "MIÉRCOLES, JUEVES, VIERNES, SÁBADOS, DOMINGOS", "MARTES, JUEVES, SÁBADOS"])
+                combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+            elif etiqueta == "Tipo de Contratación":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly", values=["BASIFICADOS", "HOMOLOGADOS", "REGULARIZADOS", "CONTRATO", "SUPLENTES O CUBREINCIDENCIAS", "OTRO"])
+                combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+            elif etiqueta == "Último Grado de Estudios":
+                combo = ttk.Combobox(entrada_frame, textvariable=self.datos_entrada[etiqueta], state="readonly", values=["EDUCACIÓN BÁSICA", "EDUCACIÓN MEDIA SUPERIOR", "EDUCACIÓN SUPERIOR"])
+                combo.grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
             else:
-                ttk.Entry(entrada_frame, textvariable=datos[etiqueta]).grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
+                ttk.Entry(entrada_frame, textvariable=self.datos_entrada[etiqueta]).grid(row=row, column=col+1, padx=5, pady=2, sticky="ew")
 
-        ttk.Button(entrada_frame, text="Registrar Trabajador", command=registrar_trabajador).grid(
+        ttk.Button(entrada_frame, text="Registrar Trabajador", command=self._registrar_trabajador).grid(
             row=num_campos_por_columna+1, column=0, columnspan=4, pady=10)
 
-        tabla_frame = ttk.LabelFrame(registro_trabajadores_frame, text="Historial de Trabajadores")
+        tabla_frame = self.create_labeled_frame(self.frame, "Historial de Trabajadores")
         tabla_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         columnas = etiquetas
-        tabla_trabajadores = ttk.Treeview(tabla_frame, columns=columnas, show="headings")
-        for col in columnas:
-            tabla_trabajadores.heading(col, text=col)
-            tabla_trabajadores.column(col, width=150, anchor="w")
-
-        vscroll = ttk.Scrollbar(tabla_frame, orient="vertical", command=tabla_trabajadores.yview)
-        hscroll = ttk.Scrollbar(tabla_frame, orient="horizontal", command=tabla_trabajadores.xview)
-        tabla_trabajadores.configure(yscrollcommand=vscroll.set, xscrollcommand=hscroll.set)
+        self.tabla_trabajadores, vscroll, hscroll = self.create_treeview_with_scroll(tabla_frame, columnas)
         vscroll.pack(side="right", fill="y")
         hscroll.pack(side="bottom", fill="x")
-        tabla_trabajadores.pack(fill="both", expand=True)
+        self.tabla_trabajadores.pack(fill="both", expand=True)
 
-def actualizar_tabla_historial():
-    if tabla_trabajadores:
-        tabla_trabajadores.delete(*tabla_trabajadores.get_children())
-        for registro in historial_trabajadores:
-            valores = [registro.get(col, "") for col in tabla_trabajadores["columns"]]
-            tabla_trabajadores.insert('', 'end', values=valores)
+    def show(self):
+        self.frame.pack(expand=True, fill="both")
+        self._actualizar_tabla_historial()
 
-def cargar_registro_trabajadores():
-    ocultar_frames()
-    crear_registro_trabajadores_frame()
-    registro_trabajadores_frame.pack(expand=True, fill="both")
-    actualizar_tabla_historial()
+    def _actualizar_puestos(self, *args):
+        depto = self.datos_entrada["Departamento"].get()
+        puestos = self.data.puestos_por_departamento.get(depto, [])
+        self.puesto_combo['values'] = puestos
+        self.datos_entrada["Puesto"].set('')
 
-# --- Frame Registro de Asistencia con lógicas de retardos, faltas y horarios ---
-def crear_registro_asistencia_frame():
-    global registro_asistencia_frame, tabla_asistencia, lista_ids_cb
+    def _validar_datos(self):
+        for campo, var in self.datos_entrada.items():
+            if not var.get().strip():
+                messagebox.showwarning("Campo vacío", f"El campo '{campo}' es obligatorio.")
+                return False
+        return True
 
-    if registro_asistencia_frame is None:
-        registro_asistencia_frame = tk.Frame(contenido_dinamico)
+    def _registrar_trabajador(self):
+        if not self._validar_datos():
+            return
 
-        # Variables
-        var_id = tk.StringVar()
-        var_nombre = tk.StringVar()
-        var_departamento = tk.StringVar()
-        var_puesto = tk.StringVar()
-        var_turno = tk.StringVar()
-        var_jornada = tk.StringVar()
-        var_horario = tk.StringVar()
-        var_estado = tk.StringVar()
-        var_fecha = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d"))
-        var_hora_entrada = tk.StringVar()
-        var_hora_salida = tk.StringVar()
-        var_horas_extra = tk.StringVar(value="0:00")
+        jornada = self.datos_entrada["Jornada"].get()
+        puesto = self.datos_entrada["Puesto"].get()
+        clave = f"{puesto}_{jornada}"
 
-        def llenar_campos(event=None):
-            nc = var_id.get()
-            if nc in datos_trabajadores:
-                t = datos_trabajadores[nc]
-                var_nombre.set(t.get("Nombre", ""))
-                var_departamento.set(t.get("Departamento", ""))
-                var_puesto.set(t.get("Puesto", ""))
-                var_turno.set(t.get("Turno", ""))
-                var_jornada.set(t.get("Jornada", ""))
-                var_horario.set(t.get("Horario", ""))
-                var_estado.set("")
-                var_hora_entrada.set("")
-                var_hora_salida.set("")
-                var_horas_extra.set("0:00")
-            else:
-                var_nombre.set("")
-                var_departamento.set("")
-                var_puesto.set("")
-                var_turno.set("")
-                var_jornada.set("")
-                var_horario.set("")
-                var_estado.set("")
-                var_hora_entrada.set("")
-                var_hora_salida.set("")
-                var_horas_extra.set("0:00")
+        if self.data.cupo_jornada.get(clave, 0) >= 10:
+            messagebox.showerror("Cupo lleno", "Esta jornada ha llegado al límite de trabajadores.")
+            return
 
-        def calcular_estado_entrada(hora_entrada_str, turno):
-            fmt = "%H:%M"
-            hora_entrada = datetime.strptime(hora_entrada_str, fmt)
-            inicio_str, fin_str = horarios_turno.get(turno, ("07:00", "15:00"))
-            inicio = datetime.strptime(inicio_str, fmt)
+        registro = {k: v.get() for k, v in self.datos_entrada.items()}
+        self.data.historial_trabajadores.append(registro)
+        self.data.cupo_jornada[clave] = self.data.cupo_jornada.get(clave, 0) + 1
 
-            # Ajuste nocturno
-            if turno == "TURNO NOCTURNO":
-                if hora_entrada.hour < 7:
-                    inicio = inicio - timedelta(days=1)
-                if hora_entrada < inicio:
-                    hora_entrada += timedelta(days=1)
+        nc = registro["Número de control"]
+        if nc not in self.data.ids_control:
+            self.data.ids_control.append(nc)
+        self.data.datos_trabajadores[nc] = registro
 
-            delta_minutos = (hora_entrada - inicio).total_seconds() / 60
+        for var in self.datos_entrada.values():
+            var.set('')
+        if self.puesto_combo:
+            self.puesto_combo['values'] = []
+        self._actualizar_tabla_historial()
+        self.app.asistencia_module.update_id_list()
+        self.app.vacaciones_module.update_id_list()
+        messagebox.showinfo("Éxito", "Trabajador registrado correctamente.")
 
-            if -10 <= delta_minutos <= 0:
-                return "Asistencia"
-            elif 0 < delta_minutos <= 10:
-                return "Asistencia"
-            elif 10 < delta_minutos <= 30:
-                return "Retardo menor"
-            elif delta_minutos > 30:
-                return "Retardo mayor"
-            else:
-                return "Asistencia"
+    def _actualizar_tabla_historial(self):
+        if self.tabla_trabajadores:
+            self.tabla_trabajadores.delete(*self.tabla_trabajadores.get_children())
+            for registro in self.data.historial_trabajadores:
+                valores = [registro.get(col, "") for col in self.tabla_trabajadores["columns"]]
+                self.tabla_trabajadores.insert('', 'end', values=valores)
 
-        def actualizar_contador_retardos(nc, estado):
-            if nc not in contador_retardos:
-                contador_retardos[nc] = {"retardo_menor": 0, "retardo_mayor": 0, "faltas": 0}
+# --- Clase Hijo 3: RegistroAsistenciaModule ---
+class RegistroAsistenciaModule(BaseModule):
+    def __init__(self, parent_frame, app_instance, data_store):
+        super().__init__(parent_frame, app_instance, data_store)
+        self.frame = tk.Frame(self.parent_frame)
+        self.lista_ids_cb = None
+        self.tabla_asistencia = None
 
-            if estado == "Retardo menor":
-                contador_retardos[nc]["retardo_menor"] += 1
-                if contador_retardos[nc]["retardo_menor"] >= 3:
-                    contador_retardos[nc]["faltas"] += 1
-                    contador_retardos[nc]["retardo_menor"] = 0
-                    messagebox.showinfo("Falta asignada",
-                                        f"Al trabajador {nc} se le asignó 1 falta por 3 retardos menores.")
-            elif estado == "Retardo mayor":
-                contador_retardos[nc]["retardo_mayor"] += 1
-                if contador_retardos[nc]["retardo_mayor"] >= 2:
-                    contador_retardos[nc]["faltas"] += 1
-                    contador_retardos[nc]["retardo_mayor"] = 0
-                    messagebox.showinfo("Falta asignada",
-                                        f"Al trabajador {nc} se le asignó 1 falta por 2 retardos mayores.")
+        self.var_id = tk.StringVar()
+        self.var_nombre = tk.StringVar()
+        self.var_departamento = tk.StringVar()
+        self.var_puesto = tk.StringVar()
+        self.var_turno = tk.StringVar()
+        self.var_jornada = tk.StringVar()
+        self.var_horario = tk.StringVar()
+        self.var_estado = tk.StringVar()
+        self.var_fecha = tk.StringVar(value=datetime.now().strftime("%Y-%m-%d"))
+        self.var_hora_entrada = tk.StringVar()
+        self.var_hora_salida = tk.StringVar()
+        self.var_horas_extra = tk.StringVar(value="0:00")
 
-        def registrar_entrada():
-            nc = var_id.get()
-            if nc not in datos_trabajadores:
-                messagebox.showerror("Error", "Número de control no registrado")
-                return
+        self._create_widgets()
 
-            ahora = datetime.now()
-            hora_entrada_str = ahora.strftime("%H:%M")
-
-            turno = var_turno.get()
-            if turno not in horarios_turno:
-                messagebox.showerror("Error", "El trabajador no tiene turno válido")
-                return
-
-            estado = calcular_estado_entrada(hora_entrada_str, turno)
-            var_hora_entrada.set(hora_entrada_str)
-            var_estado.set(estado)
-
-            actualizar_contador_retardos(nc, estado)
-
-            messagebox.showinfo("Entrada registrada", f"Entrada registrada a las {hora_entrada_str} con estado: {estado}")
-
-        def registrar_salida():
-            nc = var_id.get()
-            if nc not in datos_trabajadores:
-                messagebox.showerror("Error", "Número de control no registrado")
-                return
-            if not var_hora_entrada.get():
-                messagebox.showwarning("Error", "Primero debe registrar la entrada")
-                return
-
-            ahora = datetime.now()
-            hora_salida_str = ahora.strftime("%H:%M")
-            var_hora_salida.set(hora_salida_str)
-
-            turno = var_turno.get()
-            hora_ini_str, hora_fin_str = horarios_turno.get(turno, ("07:00", "15:00"))
-
-            fmt = "%H:%M"
-            entrada_dt = datetime.strptime(var_hora_entrada.get(), fmt)
-            salida_dt = datetime.strptime(hora_salida_str, fmt)
-            fin_dt = datetime.strptime(hora_fin_str, fmt)
-
-            # Ajuste nocturno
-            if hora_fin_str == "07:00" and salida_dt < entrada_dt:
-                salida_dt += timedelta(days=1)
-            if hora_fin_str == "07:00" and fin_dt < entrada_dt:
-                fin_dt += timedelta(days=1)
-
-            extra = salida_dt - fin_dt
-            horas_extra = "0:00"
-            if extra.total_seconds() > 0:
-                total_minutos = int(extra.total_seconds() // 60)
-                horas = total_minutos // 60
-                minutos = total_minutos % 60
-                horas_extra = f"{horas}:{minutos:02d}"
-            var_horas_extra.set(horas_extra)
-
-            fila = (
-                nc,
-                var_nombre.get(),
-                var_departamento.get(),
-                var_puesto.get(),
-                var_turno.get(),
-                var_jornada.get(),
-                var_horario.get(),
-                var_fecha.get(),
-                var_hora_entrada.get(),
-                var_hora_salida.get(),
-                var_estado.get(),
-                horas_extra
-            )
-            asistencia_registros.append(fila)
-            tabla_asistencia.insert('', 'end', values=fila)
-
-            var_id.set("")
-            var_nombre.set("")
-            var_departamento.set("")
-            var_puesto.set("")
-            var_turno.set("")
-            var_jornada.set("")
-            var_horario.set("")
-            var_estado.set("")
-            var_hora_entrada.set("")
-            var_hora_salida.set("")
-            var_horas_extra.set("0:00")
-
-            actualizar_lista_ids()
-
-        def actualizar_lista_ids():
-            lista_ids_cb['values'] = ids_control
-
-        # Widgets
-        form_frame = ttk.LabelFrame(registro_asistencia_frame, text="Registro de Asistencia")
+    def _create_widgets(self):
+        form_frame = self.create_labeled_frame(self.frame, "Registro de Asistencia")
         form_frame.pack(fill="x", padx=10, pady=10)
 
         ttk.Label(form_frame, text="Número de Control:").grid(row=0, column=0, padx=5, pady=5, sticky="e")
-        lista_ids_cb = ttk.Combobox(form_frame, textvariable=var_id, state="readonly", values=ids_control)
-        lista_ids_cb.grid(row=0, column=1, padx=5, pady=5)
-        lista_ids_cb.bind("<<ComboboxSelected>>", llenar_campos)
+        self.lista_ids_cb = ttk.Combobox(form_frame, textvariable=self.var_id, state="readonly", values=self.data.ids_control)
+        self.lista_ids_cb.grid(row=0, column=1, padx=5, pady=5)
+        self.lista_ids_cb.bind("<<ComboboxSelected>>", self._llenar_campos)
 
         campos_label = ["Nombre", "Departamento", "Puesto", "Turno", "Jornada", "Horario"]
-        vars_campos = [var_nombre, var_departamento, var_puesto, var_turno, var_jornada, var_horario]
+        vars_campos = [self.var_nombre, self.var_departamento, self.var_puesto, self.var_turno, self.var_jornada, self.var_horario]
 
         for i, (lbl, varc) in enumerate(zip(campos_label, vars_campos)):
             ttk.Label(form_frame, text=lbl + ":").grid(row=i+1, column=0, padx=5, pady=2, sticky="e")
             ttk.Entry(form_frame, textvariable=varc, state="readonly").grid(row=i+1, column=1, padx=5, pady=2, sticky="w")
 
         ttk.Label(form_frame, text="Fecha:").grid(row=7, column=0, padx=5, pady=2, sticky="e")
-        ttk.Entry(form_frame, textvariable=var_fecha, state="readonly").grid(row=7, column=1, padx=5, pady=2, sticky="w")
+        ttk.Entry(form_frame, textvariable=self.var_fecha, state="readonly").grid(row=7, column=1, padx=5, pady=2, sticky="w")
 
         ttk.Label(form_frame, text="Hora Entrada:").grid(row=8, column=0, padx=5, pady=2, sticky="e")
-        ttk.Entry(form_frame, textvariable=var_hora_entrada, state="readonly").grid(row=8, column=1, padx=5, pady=2, sticky="w")
+        ttk.Entry(form_frame, textvariable=self.var_hora_entrada, state="readonly").grid(row=8, column=1, padx=5, pady=2, sticky="w")
 
         ttk.Label(form_frame, text="Hora Salida:").grid(row=9, column=0, padx=5, pady=2, sticky="e")
-        ttk.Entry(form_frame, textvariable=var_hora_salida, state="readonly").grid(row=9, column=1, padx=5, pady=2, sticky="w")
+        ttk.Entry(form_frame, textvariable=self.var_hora_salida, state="readonly").grid(row=9, column=1, padx=5, pady=2, sticky="w")
 
         ttk.Label(form_frame, text="Horas Extra:").grid(row=10, column=0, padx=5, pady=2, sticky="e")
-        ttk.Entry(form_frame, textvariable=var_horas_extra, state="readonly").grid(row=10, column=1, padx=5, pady=2, sticky="w")
+        ttk.Entry(form_frame, textvariable=self.var_horas_extra, state="readonly").grid(row=10, column=1, padx=5, pady=2, sticky="w")
 
         ttk.Label(form_frame, text="Estado:").grid(row=11, column=0, padx=5, pady=2, sticky="e")
-        ttk.Entry(form_frame, textvariable=var_estado, state="readonly").grid(row=11, column=1, padx=5, pady=2, sticky="w")
+        ttk.Entry(form_frame, textvariable=self.var_estado, state="readonly").grid(row=11, column=1, padx=5, pady=2, sticky="w")
 
-        ttk.Button(form_frame, text="Registrar Entrada", command=registrar_entrada).grid(row=12, column=0, padx=10, pady=10)
-        ttk.Button(form_frame, text="Registrar Salida", command=registrar_salida).grid(row=12, column=1, padx=10, pady=10)
+        ttk.Button(form_frame, text="Registrar Entrada", command=self._registrar_entrada).grid(row=12, column=0, padx=10, pady=10)
+        ttk.Button(form_frame, text="Registrar Salida", command=self._registrar_salida).grid(row=12, column=1, padx=10, pady=10)
 
-        tabla_frame = ttk.LabelFrame(registro_asistencia_frame, text="Historial de Asistencias")
+        tabla_frame = self.create_labeled_frame(self.frame, "Historial de Asistencias")
         tabla_frame.pack(fill="both", expand=True, padx=10, pady=10)
 
         columnas = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
                     "Jornada", "Horario", "Fecha", "Hora Entrada", "Hora Salida", "Estado", "Horas Extra")
-        tabla_asistencia = ttk.Treeview(tabla_frame, columns=columnas, show="headings")
-        for col in columnas:
-            tabla_asistencia.heading(col, text=col)
-            tabla_asistencia.column(col, width=110, anchor="center")
-
-        vscroll = ttk.Scrollbar(tabla_frame, orient="vertical", command=tabla_asistencia.yview)
-        hscroll = ttk.Scrollbar(tabla_frame, orient="horizontal", command=tabla_asistencia.xview)
-        tabla_asistencia.configure(yscrollcommand=vscroll.set, xscrollcommand=hscroll.set)
+        self.tabla_asistencia, vscroll, hscroll = self.create_treeview_with_scroll(tabla_frame, columnas)
         vscroll.pack(side="right", fill="y")
         hscroll.pack(side="bottom", fill="x")
-        tabla_asistencia.pack(fill="both", expand=True)
+        self.tabla_asistencia.pack(fill="both", expand=True)
 
-def cargar_registro_asistencia():
-    ocultar_frames()
-    crear_registro_asistencia_frame()
-    registro_asistencia_frame.pack(fill="both", expand=True)
+    def show(self):
+        self.frame.pack(fill="both", expand=True)
+        self.update_id_list()
+        self._actualizar_tabla_asistencia()
 
-    # -- NUEVO Módulo Registro Vacaciones y submódulos --
+    def _llenar_campos(self, event=None):
+        nc = self.var_id.get()
+        if nc in self.data.datos_trabajadores:
+            t = self.data.datos_trabajadores[nc]
+            self.var_nombre.set(t.get("Nombre", ""))
+            self.var_departamento.set(t.get("Departamento", ""))
+            self.var_puesto.set(t.get("Puesto", ""))
+            self.var_turno.set(t.get("Turno", ""))
+            self.var_jornada.set(t.get("Jornada", ""))
+            self.var_horario.set(t.get("Horario", ""))
+            self.var_estado.set("")
+            self.var_hora_entrada.set("")
+            self.var_hora_salida.set("")
+            self.var_horas_extra.set("0:00")
+        else:
+            self.var_nombre.set("")
+            self.var_departamento.set("")
+            self.var_puesto.set("")
+            self.var_turno.set("")
+            self.var_jornada.set("")
+            self.var_horario.set("")
+            self.var_estado.set("")
+            self.var_hora_entrada.set("")
+            self.var_hora_salida.set("")
+            self.var_horas_extra.set("0:00")
 
-registro_vacaciones_frame = None
+    def _calcular_estado_entrada(self, hora_entrada_str, turno):
+        fmt = "%H:%M"
+        try:
+            hora_entrada = datetime.strptime(hora_entrada_str, fmt)
+        except ValueError:
+            messagebox.showerror("Error de formato", "Hora de entrada no válida.")
+            return "Desconocido"
 
-def crear_registro_vacaciones_frame():
-    global registro_vacaciones_frame
-    if registro_vacaciones_frame is None:
-        registro_vacaciones_frame = tk.Frame(contenido_dinamico)
+        inicio_str, fin_str = self.data.horarios_turno.get(turno, ("07:00", "15:00"))
+        try:
+            inicio = datetime.strptime(inicio_str, fmt)
+        except ValueError:
+            messagebox.showerror("Error de formato", "Horario de turno no válido.")
+            return "Desconocido"
 
-        canvas = tk.Canvas(registro_vacaciones_frame)
-        scrollbar = tk.Scrollbar(registro_vacaciones_frame, orient="vertical", command=canvas.yview)
+        if turno == "TURNO NOCTURNO":
+            if hora_entrada.hour < inicio.hour:
+                hora_entrada += timedelta(days=1)
+            if inicio.hour >= 12 and hora_entrada.hour < 12:
+                 inicio -= timedelta(days=1)
+
+        delta_minutos = (hora_entrada - inicio).total_seconds() / 60
+
+        if -5 <= delta_minutos <= 5:
+            return "Asistencia"
+        elif 5 < delta_minutos <= 30:
+            return "Retardo menor"
+        elif delta_minutos > 30:
+            return "Retardo mayor"
+        else:
+            return "Asistencia"
+
+    def _actualizar_contador_retardos(self, nc, estado):
+        if nc not in self.data.contador_retardos:
+            self.data.contador_retardos[nc] = {"retardo_menor": 0, "retardo_mayor": 0, "faltas": 0}
+
+        if estado == "Retardo menor":
+            self.data.contador_retardos[nc]["retardo_menor"] += 1
+            if self.data.contador_retardos[nc]["retardo_menor"] >= 3:
+                self.data.contador_retardos[nc]["faltas"] += 1
+                self.data.contador_retardos[nc]["retardo_menor"] = 0
+                messagebox.showinfo("Falta asignada",
+                                    f"Al trabajador {nc} se le asignó 1 falta por 3 retardos menores. Total faltas: {self.data.contador_retardos[nc]['faltas']}")
+        elif estado == "Retardo mayor":
+            self.data.contador_retardos[nc]["retardo_mayor"] += 1
+            if self.data.contador_retardos[nc]["retardo_mayor"] >= 2:
+                self.data.contador_retardos[nc]["faltas"] += 1
+                self.data.contador_retardos[nc]["retardo_mayor"] = 0
+                messagebox.showinfo("Falta asignada",
+                                    f"Al trabajador {nc} se le asignó 1 falta por 2 retardos mayores. Total faltas: {self.data.contador_retardos[nc]['faltas']}")
+
+    def _registrar_entrada(self):
+        nc = self.var_id.get()
+        if not nc or nc not in self.data.datos_trabajadores:
+            messagebox.showerror("Error", "Seleccione un número de control válido.")
+            return
+
+        ahora = datetime.now()
+        hora_entrada_str = ahora.strftime("%H:%M")
+        fecha_actual = ahora.strftime("%Y-%m-%d")
+
+        for registro in self.data.asistencia_registros:
+            if registro[0] == nc and registro[7] == fecha_actual and registro[8]:
+                messagebox.showwarning("Advertencia", "Ya se registró una entrada para este trabajador hoy.")
+                return
+
+        turno = self.var_turno.get()
+        if not turno or turno not in self.data.horarios_turno:
+            messagebox.showerror("Error", "El trabajador no tiene un turno válido asignado.")
+            return
+
+        estado = self._calcular_estado_entrada(hora_entrada_str, turno)
+        self.var_hora_entrada.set(hora_entrada_str)
+        self.var_estado.set(estado)
+
+        self._actualizar_contador_retardos(nc, estado)
+
+        messagebox.showinfo("Entrada registrada", f"Entrada registrada a las {hora_entrada_str} con estado: {estado}")
+
+    def _registrar_salida(self):
+        nc = self.var_id.get()
+        if not nc or nc not in self.data.datos_trabajadores:
+            messagebox.showerror("Error", "Seleccione un número de control válido.")
+            return
+        if not self.var_hora_entrada.get():
+            messagebox.showwarning("Error", "Primero debe registrar la entrada.")
+            return
+
+        ahora = datetime.now()
+        hora_salida_str = ahora.strftime("%H:%M")
+        self.var_hora_salida.set(hora_salida_str)
+
+        turno = self.var_turno.get()
+        if not turno or turno not in self.data.horarios_turno:
+            messagebox.showerror("Error", "El trabajador no tiene un turno válido asignado para calcular horas extra.")
+            return
+
+        hora_ini_str, hora_fin_str = self.data.horarios_turno.get(turno)
+
+        fmt = "%H:%M"
+        try:
+            entrada_dt = datetime.strptime(self.var_hora_entrada.get(), fmt)
+            salida_dt = datetime.strptime(hora_salida_str, fmt)
+            fin_dt = datetime.strptime(hora_fin_str, fmt)
+        except ValueError:
+            messagebox.showerror("Error de formato", "Problema al parsear las horas.")
+            return
+
+        if turno == "TURNO NOCTURNO":
+            if salida_dt < entrada_dt:
+                salida_dt += timedelta(days=1)
+            if fin_dt < entrada_dt:
+                fin_dt += timedelta(days=1)
+            if fin_dt < entrada_dt and entrada_dt.hour >= 12 and fin_dt.hour < 12:
+                fin_dt += timedelta(days=1)
+            if fin_dt > salida_dt and salida_dt.hour < 12 and fin_dt.hour >= 12:
+                fin_dt -= timedelta(days=1)
+
+        extra = salida_dt - fin_dt
+        horas_extra = "0:00"
+        if extra.total_seconds() > 0:
+            total_minutos = int(extra.total_seconds() // 60)
+            horas = total_minutos // 60
+            minutos = total_minutos % 60
+            horas_extra = f"{horas}:{minutos:02d}"
+        self.var_horas_extra.set(horas_extra)
+
+        actualizado = False
+        fecha_actual_str = self.var_fecha.get()
+        hora_entrada_prevista = self.var_hora_entrada.get()
+
+        for i, reg in enumerate(self.data.asistencia_registros):
+            if reg[0] == nc and reg[7] == fecha_actual_str and reg[8] == hora_entrada_prevista:
+                self.data.asistencia_registros[i] = (
+                    nc,
+                    self.var_nombre.get(),
+                    self.var_departamento.get(),
+                    self.var_puesto.get(),
+                    self.var_turno.get(),
+                    self.var_jornada.get(),
+                    self.var_horario.get(),
+                    fecha_actual_str,
+                    self.var_hora_entrada.get(),
+                    self.var_hora_salida.get(),
+                    self.var_estado.get(),
+                    horas_extra
+                )
+                actualizado = True
+                break
+
+        if not actualizado:
+             fila = (
+                nc,
+                self.var_nombre.get(),
+                self.var_departamento.get(),
+                self.var_puesto.get(),
+                self.var_turno.get(),
+                self.var_jornada.get(),
+                self.var_horario.get(),
+                fecha_actual_str,
+                self.var_hora_entrada.get(),
+                self.var_hora_salida.get(),
+                self.var_estado.get(),
+                horas_extra
+            )
+             self.data.asistencia_registros.append(fila)
+
+        self._actualizar_tabla_asistencia()
+        messagebox.showinfo("Salida registrada", f"Salida registrada a las {hora_salida_str}. Horas extra: {horas_extra}")
+
+        self.var_id.set("")
+        self.var_nombre.set("")
+        self.var_departamento.set("")
+        self.var_puesto.set("")
+        self.var_turno.set("")
+        self.var_jornada.set("")
+        self.var_horario.set("")
+        self.var_estado.set("")
+        self.var_hora_entrada.set("")
+        self.var_hora_salida.set("")
+        self.var_horas_extra.set("0:00")
+        self.update_id_list()
+
+    def _actualizar_tabla_asistencia(self):
+        if self.tabla_asistencia:
+            self.tabla_asistencia.delete(*self.tabla_asistencia.get_children())
+            for registro in self.data.asistencia_registros:
+                self.tabla_asistencia.insert('', 'end', values=registro)
+
+    def update_id_list(self):
+        self.lista_ids_cb['values'] = self.data.ids_control
+        if self.data.ids_control:
+            self.lista_ids_cb.set(self.data.ids_control[0])
+            self._llenar_campos()
+
+# --- Clase Hijo 4: RegistroVacacionesModule ---
+class RegistroVacacionesModule(BaseModule):
+    def __init__(self, parent_frame, app_instance, data_store):
+        super().__init__(parent_frame, app_instance, data_store)
+        self.frame = tk.Frame(self.parent_frame)
+
+        self.entry_nc = None
+        self.entradas_autocompletar = {}
+        self.division_cb = None
+        self.quincena_cb = None
+        self.dias_eco_cb = None
+        self.periodo_cb = None
+        self.tree_vac = None
+        self.tree_eco = None
+        self.tree_pe = None
+
+        self._create_widgets()
+
+    def _create_widgets(self):
+        canvas = tk.Canvas(self.frame)
+        scrollbar = tk.Scrollbar(self.frame, orient="vertical", command=canvas.yview)
         scroll_frame = tk.Frame(canvas)
 
         scroll_frame.bind(
@@ -499,165 +549,159 @@ def crear_registro_vacaciones_frame():
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
 
-        # Título
         tk.Label(scroll_frame, text="Registro de Vacaciones", font=("Arial", 16)).grid(row=0, column=0, columnspan=4, pady=10)
 
-        # Número de control + autocompletar datos
         tk.Label(scroll_frame, text="Número de Control:").grid(row=1, column=0, sticky="e", padx=5, pady=5)
-        entry_nc = tk.Entry(scroll_frame)
-        entry_nc.grid(row=1, column=1, pady=5)
+        self.entry_nc = ttk.Combobox(scroll_frame, state="readonly", values=self.data.ids_control)
+        self.entry_nc.grid(row=1, column=1, pady=5, sticky="ew")
+        self.entry_nc.bind("<<ComboboxSelected>>", self._autocompletar)
 
         campos = ["Nombre", "Departamento", "Puesto", "Turno", "Jornada", "Horario"]
-        entradas_autocompletar = {}
         for i, campo in enumerate(campos):
             tk.Label(scroll_frame, text=campo + ":").grid(row=i+2, column=0, sticky="e", padx=5, pady=3)
             ent = tk.Entry(scroll_frame, state="readonly")
             ent.grid(row=i+2, column=1, pady=3, sticky="ew")
-            entradas_autocompletar[campo] = ent
+            self.entradas_autocompletar[campo] = ent
 
-        def autocompletar():
-            nc = entry_nc.get()
-            if nc in datos_trabajadores:
-                trabajador = datos_trabajadores[nc]
-                for campo in campos:
-                    entradas_autocompletar[campo].config(state="normal")
-                    entradas_autocompletar[campo].delete(0, tk.END)
-                    entradas_autocompletar[campo].insert(0, trabajador.get(campo, ""))
-                    entradas_autocompletar[campo].config(state="readonly")
-            else:
-                messagebox.showerror("Error", "Número de control no encontrado")
-
-        ttk.Button(scroll_frame, text="Buscar", command=autocompletar).grid(row=1, column=2, padx=5)
-
-        # División
         tk.Label(scroll_frame, text="División:").grid(row=8, column=0, sticky="e", padx=5, pady=5)
-        division_cb = ttk.Combobox(scroll_frame, state="readonly", values=["Primavera", "Invierno"])
-        division_cb.grid(row=8, column=1, sticky="ew", pady=5)
+        self.division_cb = ttk.Combobox(scroll_frame, state="readonly", values=["Primavera", "Invierno"])
+        self.division_cb.grid(row=8, column=1, sticky="ew", pady=5)
+        self.division_cb.bind("<<ComboboxSelected>>", self._actualizar_quincenas)
 
-        # Quincena
         tk.Label(scroll_frame, text="Quincena:").grid(row=9, column=0, sticky="e", padx=5, pady=5)
-        quincena_cb = ttk.Combobox(scroll_frame, state="readonly")
-        quincena_cb.grid(row=9, column=1, sticky="ew", pady=5)
+        self.quincena_cb = ttk.Combobox(scroll_frame, state="readonly")
+        self.quincena_cb.grid(row=9, column=1, sticky="ew", pady=5)
 
+        tk.Label(scroll_frame, text="Días Económicos (máximo 8 días/año):").grid(row=10, column=0, sticky="e", padx=5, pady=5)
+        self.dias_eco_cb = ttk.Combobox(scroll_frame, state="readonly", values=["SI", "NO"])
+        self.dias_eco_cb.grid(row=10, column=1, sticky="ew", pady=5)
+
+        tk.Label(scroll_frame, text="Período Extraordinario:").grid(row=11, column=0, sticky="e", padx=5, pady=5)
+        self.periodo_cb = ttk.Combobox(scroll_frame, state="readonly", values=[
+            "Alto Riesgo (15 días)", "Mediano Riesgo (8 días)", "Bajo Riesgo (3 días)"])
+        self.periodo_cb.grid(row=11, column=1, sticky="ew", pady=5)
+
+        ttk.Button(scroll_frame, text="Registrar", command=self._registrar_vacaciones).grid(row=12, column=0, columnspan=3, pady=15)
+
+        tk.Label(scroll_frame, text="Historial Vacaciones").grid(row=13, column=0, columnspan=4, pady=5)
+        columns_vac = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
+                       "Jornada", "Horario", "División", "Quincena")
+        self.tree_vac, vscroll_vac, hscroll_vac = self.create_treeview_with_scroll(scroll_frame, columns_vac, heights=7)
+        self.tree_vac.grid(row=14, column=0, columnspan=4, pady=5, sticky="ew")
+        vscroll_vac.grid(row=14, column=4, sticky="ns")
+        hscroll_vac.grid(row=15, column=0, columnspan=4, sticky="ew")
+        self.tree_vac.configure(yscrollcommand=vscroll_vac.set, xscrollcommand=hscroll_vac.set)
+
+        tk.Label(scroll_frame, text="Historial Días Económicos").grid(row=16, column=0, columnspan=4, pady=5)
+        columns_eco = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
+                       "Jornada", "Horario", "Fecha", "Días Económicos Registrados")
+        self.tree_eco, vscroll_eco, hscroll_eco = self.create_treeview_with_scroll(scroll_frame, columns_eco, heights=5)
+        self.tree_eco.grid(row=17, column=0, columnspan=4, pady=5, sticky="ew")
+        vscroll_eco.grid(row=17, column=4, sticky="ns")
+        hscroll_eco.grid(row=18, column=0, columnspan=4, sticky="ew")
+        self.tree_eco.configure(yscrollcommand=vscroll_eco.set, xscrollcommand=hscroll_eco.set)
+
+        tk.Label(scroll_frame, text="Historial Períodos Extraordinarios").grid(row=19, column=0, columnspan=4, pady=5)
+        columns_pe = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
+                      "Jornada", "Horario", "Nivel de Riesgo", "Días", "Fecha Registro")
+        self.tree_pe, vscroll_pe, hscroll_pe = self.create_treeview_with_scroll(scroll_frame, columns_pe, heights=5)
+        self.tree_pe.grid(row=20, column=0, columnspan=4, pady=5, sticky="ew")
+        vscroll_pe.grid(row=20, column=4, sticky="ns")
+        hscroll_pe.grid(row=21, column=0, columnspan=4, sticky="ew")
+        self.tree_pe.configure(yscrollcommand=vscroll_pe.set, xscrollcommand=hscroll_pe.set)
+
+    def show(self):
+        self.frame.pack(fill="both", expand=True)
+        self.update_id_list()
+        self._actualizar_tablas_vacaciones()
+
+    def _autocompletar(self, event=None):
+        nc = self.entry_nc.get()
+        if nc in self.data.datos_trabajadores:
+            trabajador = self.data.datos_trabajadores[nc]
+            for campo, ent in self.entradas_autocompletar.items():
+                ent.config(state="normal")
+                ent.delete(0, tk.END)
+                ent.insert(0, trabajador.get(campo, ""))
+                ent.config(state="readonly")
+        else:
+            messagebox.showerror("Error", "Número de control no encontrado.")
+            for ent in self.entradas_autocompletar.values():
+                ent.config(state="normal")
+                ent.delete(0, tk.END)
+                ent.config(state="readonly")
+
+    def _actualizar_quincenas(self, event=None):
         quincenas_primavera = [
-            "1-15 Enero", "16-31 Enero",
-            "1-15 Febrero", "16-28 Febrero",
-            "1-15 Marzo", "16-31 Marzo",
-            "1-15 Abril", "16-30 Abril",
-            "1-15 Mayo", "16-31 Mayo",
-            "1-15 Junio", "16-30 Junio"
+            "1-15 Enero", "16-31 Enero", "1-15 Febrero", "16-28 Febrero",
+            "1-15 Marzo", "16-31 Marzo", "1-15 Abril", "16-30 Abril",
+            "1-15 Mayo", "16-31 Mayo", "1-15 Junio", "16-30 Junio"
         ]
         quincenas_invierno = [
-            "1-15 Julio", "16-31 Julio",
-            "1-15 Agosto", "16-31 Agosto",
-            "1-15 Septiembre", "16-30 Septiembre",
-            "1-15 Octubre", "16-31 Octubre",
-            "1-15 Noviembre", "16-30 Noviembre",
-            "1-15 Diciembre", "16-31 Diciembre"
+            "1-15 Julio", "16-31 Julio", "1-15 Agosto", "16-31 Agosto",
+            "1-15 Septiembre", "16-30 Septiembre", "1-15 Octubre", "16-31 Octubre",
+            "1-15 Noviembre", "16-30 Noviembre", "1-15 Diciembre", "16-31 Diciembre"
         ]
+        if self.division_cb.get() == "Primavera":
+            self.quincena_cb['values'] = quincenas_primavera
+        elif self.division_cb.get() == "Invierno":
+            self.quincena_cb['values'] = quincenas_invierno
+        self.quincena_cb.set('')
 
-        def actualizar_quincenas(event=None):
-            if division_cb.get() == "Primavera":
-                quincena_cb['values'] = quincenas_primavera
-            elif division_cb.get() == "Invierno":
-                quincena_cb['values'] = quincenas_invierno
-            quincena_cb.set('')
+    def _contar_dias_eco(self, nc):
+        year_actual = str(datetime.now().year)
+        count = 0
+        for d in self.data.dias_economicos_registros:
+            if d["Número de Control"] == nc and d["Fecha"].startswith(year_actual):
+                count += 1
+        return count
 
-        division_cb.bind("<<ComboboxSelected>>", actualizar_quincenas)
+    def _registrar_vacaciones(self):
+        nc = self.entry_nc.get()
+        if not nc or nc not in self.data.datos_trabajadores:
+            messagebox.showerror("Error", "Seleccione un número de control válido.")
+            return
 
-        # Días Económicos
-        tk.Label(scroll_frame, text="Días Económicos (máximo 8 días/año):").grid(row=10, column=0, sticky="e", padx=5, pady=5)
-        dias_eco_cb = ttk.Combobox(scroll_frame, state="readonly", values=["SI", "NO"])
-        dias_eco_cb.grid(row=10, column=1, sticky="ew", pady=5)
+        division = self.division_cb.get()
+        quincena = self.quincena_cb.get()
+        if division == "" or quincena == "":
+            messagebox.showwarning("Aviso", "Seleccione división y quincena para registrar vacaciones.")
+            return
 
-        # Períodos Extraordinarios
-        tk.Label(scroll_frame, text="Período Extraordinario:").grid(row=11, column=0, sticky="e", padx=5, pady=5)
-        periodo_cb = ttk.Combobox(scroll_frame, state="readonly", values=[
-            "Alto Riesgo (15 días)", "Mediano Riesgo (8 días)", "Bajo Riesgo (3 días)"])
-        periodo_cb.grid(row=11, column=1, sticky="ew", pady=5)
+        trabajador = self.data.datos_trabajadores[nc]
+        jornada = trabajador.get("Jornada", "")
+        puesto = trabajador.get("Puesto", "")
+        horario = trabajador.get("Horario", "")
 
-        # Listas para guardar registros
-        registros_vacaciones = []
-        registros_dias_eco = []
-        registros_periodos_ext = []
+        count = sum(1 for r in self.data.vacaciones_registros if
+                    r["División"] == division and r["Quincena"] == quincena and
+                    r["Jornada"] == jornada and r["Puesto"] == puesto and
+                    r["Horario"] == horario)
 
-        def contar_dias_eco(nc):
-            return sum(1 for d in registros_dias_eco if d["Número de Control"] == nc)
+        if count >= 3:
+            messagebox.showwarning("Cupo lleno", "Esta quincena ya alcanzó el límite de 3 trabajadores para esta jornada, puesto y horario.")
+            return
 
-        def registrar():
-            nc = entry_nc.get()
-            if nc not in datos_trabajadores:
-                messagebox.showerror("Error", "Número de control inválido")
-                return
+        registro_vac = {
+            "Número de Control": nc,
+            "Nombre": trabajador.get("Nombre", ""),
+            "Departamento": trabajador.get("Departamento", ""),
+            "Puesto": puesto,
+            "Turno": trabajador.get("Turno", ""),
+            "Jornada": jornada,
+            "Horario": horario,
+            "División": division,
+            "Quincena": quincena
+        }
+        self.data.vacaciones_registros.append(registro_vac)
 
-            division = division_cb.get()
-            quincena = quincena_cb.get()
-            if division == "" or quincena == "":
-                messagebox.showwarning("Aviso", "Seleccione división y quincena")
-                return
-
-            trabajador = datos_trabajadores[nc]
-            jornada = trabajador.get("Jornada", "")
-            puesto = trabajador.get("Puesto", "")
-            horario = trabajador.get("Horario", "")
-
-            # Validar cupo máximo 3 trabajadores misma jornada, puesto y horario en la quincena
-            count = sum(1 for r in registros_vacaciones if
-                        r["División"] == division and r["Quincena"] == quincena and
-                        r["Jornada"] == jornada and r["Puesto"] == puesto and
-                        r["Horario"] == horario)
-
-            if count >= 3:
-                messagebox.showwarning("Cupo lleno", "Esta quincena cumplió con su límite de 3 trabajadores para esta jornada, puesto y horario.")
-                return
-
-            # Registrar vacaciones
-            registro_vac = {
-                "Número de Control": nc,
-                "Nombre": trabajador.get("Nombre", ""),
-                "Departamento": trabajador.get("Departamento", ""),
-                "Puesto": puesto,
-                "Turno": trabajador.get("Turno", ""),
-                "Jornada": jornada,
-                "Horario": horario,
-                "División": division,
-                "Quincena": quincena
-            }
-            registros_vacaciones.append(registro_vac)
-            tree_vac.insert("", "end", values=tuple(registro_vac.values()))
-
-            # Registrar días económicos si es "SI"
-            if dias_eco_cb.get() == "SI":
-                dias_anteriores = contar_dias_eco(nc)
-                if dias_anteriores >= 8:
-                    messagebox.showwarning("Límite días económicos", "Ya alcanzó el máximo de 8 días económicos por año.")
-                else:
-                    fecha = datetime.now().strftime("%Y-%m-%d")
-                    registro_eco = {
-                        "Número de Control": nc,
-                        "Nombre": trabajador.get("Nombre", ""),
-                        "Departamento": trabajador.get("Departamento", ""),
-                        "Puesto": puesto,
-                        "Turno": trabajador.get("Turno", ""),
-                        "Jornada": jornada,
-                        "Horario": horario,
-                        "Fecha": fecha,
-                        "Días Económicos Registrados": dias_anteriores + 1
-                    }
-                    registros_dias_eco.append(registro_eco)
-                    tree_eco.insert("", "end", values=tuple(registro_eco.values()))
-
-            # Registrar período extraordinario si seleccionado
-            pe = periodo_cb.get()
-            if pe != "":
-                dias_pe = 0
-                if "Alto" in pe:
-                    dias_pe = 15
-                elif "Mediano" in pe:
-                    dias_pe = 8
-                elif "Bajo" in pe:
-                    dias_pe = 3
-                registro_pe = {
+        if self.dias_eco_cb.get() == "SI":
+            dias_anteriores = self._contar_dias_eco(nc)
+            if dias_anteriores >= 8:
+                messagebox.showwarning("Límite días económicos", "Ya alcanzó el máximo de 8 días económicos por año.")
+            else:
+                fecha = datetime.now().strftime("%Y-%m-%d")
+                registro_eco = {
                     "Número de Control": nc,
                     "Nombre": trabajador.get("Nombre", ""),
                     "Departamento": trabajador.get("Departamento", ""),
@@ -665,82 +709,128 @@ def crear_registro_vacaciones_frame():
                     "Turno": trabajador.get("Turno", ""),
                     "Jornada": jornada,
                     "Horario": horario,
-                    "Nivel de Riesgo": pe,
-                    "Días": dias_pe,
-                    "Fecha Registro": datetime.now().strftime("%Y-%m-%d")
+                    "Fecha": fecha,
+                    "Días Económicos Registrados": dias_anteriores + 1
                 }
-                registros_periodos_ext.append(registro_pe)
-                tree_pe.insert("", "end", values=tuple(registro_pe.values()))
+                self.data.dias_economicos_registros.append(registro_eco)
 
-            messagebox.showinfo("Registrado", "Vacaciones y submódulos registrados correctamente.")
+        pe = self.periodo_cb.get()
+        if pe != "":
+            dias_pe = 0
+            if "Alto" in pe: dias_pe = 15
+            elif "Mediano" in pe: dias_pe = 8
+            elif "Bajo" in pe: dias_pe = 3
 
-            # Limpiar campos
-            entry_nc.delete(0, tk.END)
-            for ent in entradas_autocompletar.values():
-                ent.config(state="normal")
-                ent.delete(0, tk.END)
-                ent.config(state="readonly")
-            division_cb.set('')
-            quincena_cb.set('')
-            dias_eco_cb.set('')
-            periodo_cb.set('')
+            registro_pe = {
+                "Número de Control": nc,
+                "Nombre": trabajador.get("Nombre", ""),
+                "Departamento": trabajador.get("Departamento", ""),
+                "Puesto": puesto,
+                "Turno": trabajador.get("Turno", ""),
+                "Jornada": jornada,
+                "Horario": horario,
+                "Nivel de Riesgo": pe,
+                "Días": dias_pe,
+                "Fecha Registro": datetime.now().strftime("%Y-%m-%d")
+            }
+            self.data.periodo_extraordinario_registros.append(registro_pe)
 
-        ttk.Button(scroll_frame, text="Registrar", command=registrar).grid(row=12, column=0, columnspan=3, pady=15)
+        messagebox.showinfo("Registrado", "Vacaciones y/o submódulos registrados correctamente.")
+        self._actualizar_tablas_vacaciones()
+        self._limpiar_campos()
 
-        # Tablas historial Vacaciones, Días Económicos y Períodos Extraordinarios
-        # Vacaciones
-        tk.Label(scroll_frame, text="Historial Vacaciones").grid(row=13, column=0, columnspan=4, pady=5)
-        columns_vac = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
-                       "Jornada", "Horario", "División", "Quincena")
-        tree_vac = ttk.Treeview(scroll_frame, columns=columns_vac, show="headings", height=7)
-        for col in columns_vac:
-            tree_vac.heading(col, text=col)
-            tree_vac.column(col, width=120, anchor="center")
-        tree_vac.grid(row=14, column=0, columnspan=4, pady=5, sticky="ew")
+    def _limpiar_campos(self):
+        self.entry_nc.set("")
+        for ent in self.entradas_autocompletar.values():
+            ent.config(state="normal")
+            ent.delete(0, tk.END)
+            ent.config(state="readonly")
+        self.division_cb.set('')
+        self.quincena_cb.set('')
+        self.dias_eco_cb.set('')
+        self.periodo_cb.set('')
 
-        # Días Económicos
-        tk.Label(scroll_frame, text="Historial Días Económicos").grid(row=15, column=0, columnspan=4, pady=5)
-        columns_eco = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
-                       "Jornada", "Horario", "Fecha", "Días Económicos Registrados")
-        tree_eco = ttk.Treeview(scroll_frame, columns=columns_eco, show="headings", height=5)
-        for col in columns_eco:
-            tree_eco.heading(col, text=col)
-            tree_eco.column(col, width=120, anchor="center")
-        tree_eco.grid(row=16, column=0, columnspan=4, pady=5, sticky="ew")
+    def _actualizar_tablas_vacaciones(self):
+        self.tree_vac.delete(*self.tree_vac.get_children())
+        for registro in self.data.vacaciones_registros:
+            self.tree_vac.insert('', 'end', values=tuple(registro.values()))
 
-        # Períodos Extraordinarios
-        tk.Label(scroll_frame, text="Historial Períodos Extraordinarios").grid(row=17, column=0, columnspan=4, pady=5)
-        columns_pe = ("Número de Control", "Nombre", "Departamento", "Puesto", "Turno",
-                      "Jornada", "Horario", "Nivel de Riesgo", "Días", "Fecha Registro")
-        tree_pe = ttk.Treeview(scroll_frame, columns=columns_pe, show="headings", height=5)
-        for col in columns_pe:
-            tree_pe.heading(col, text=col)
-            tree_pe.column(col, width=110, anchor="center")
-        tree_pe.grid(row=18, column=0, columnspan=4, pady=5, sticky="ew")
+        self.tree_eco.delete(*self.tree_eco.get_children())
+        for registro in self.data.dias_economicos_registros:
+            self.tree_eco.insert('', 'end', values=tuple(registro.values()))
 
-def cargar_registro_vacaciones():
-    ocultar_frames()
-    crear_registro_vacaciones_frame()
-    registro_vacaciones_frame.pack(fill="both", expand=True)
+        self.tree_pe.delete(*self.tree_pe.get_children())
+        for registro in self.data.periodo_extraordinario_registros:
+            self.tree_pe.insert('', 'end', values=tuple(registro.values()))
 
-# -- Botones menú lateral --
+    def update_id_list(self):
+        self.entry_nc['values'] = self.data.ids_control
+        if self.data.ids_control:
+            self.entry_nc.set(self.data.ids_control[0])
+            self._autocompletar()
 
-btn_bienvenida = tk.Button(menu_lateral, text="Bienvenida",bg='#34495e',fg="white", command=cargar_bienvenida)
-btn_bienvenida.pack(fill="x", pady=5)
+# --- Clase Principal de la Aplicación: HospitalApp ---
+class HospitalApp:
+    def __init__(self):
+        self.ventana = tk.Tk()
+        self.ventana.title("Sistema Hospitalario")
+        self.ventana.geometry("1200x800")
 
-btn_registro_trab = tk.Button(menu_lateral, text="Registro Trabajadores", bg='#34495e',fg="white",command=cargar_registro_trabajadores)
-btn_registro_trab.pack(fill="x", pady=5)
+        self.data_store = HospitalData()
 
-btn_registro_asistencia = tk.Button(menu_lateral, text="Registro Asistencia",bg='#34495e',fg="white", command=cargar_registro_asistencia)
-btn_registro_asistencia.pack(fill="x", pady=5)
+        self.menu_lateral = tk.Frame(self.ventana, width=200, bg="#2c3e50")
+        self.menu_lateral.pack(side="left", fill="y")
 
-btn_registro_vacaciones = tk.Button(menu_lateral, text="Registro Vacaciones",bg='#34495e',fg="white", command=cargar_registro_vacaciones)
-btn_registro_vacaciones.pack(fill="x", pady=5)
+        self.contenido_dinamico = tk.Frame(self.ventana)
+        self.contenido_dinamico.pack(side="right", fill="both", expand=True)
 
-btn_salir = tk.Button(menu_lateral, text="Salir",bg='#34495e',fg="white", command=ventana.quit)
-btn_salir.pack(fill="x", pady=5)
+        self.bienvenida_module = BienvenidaModule(self.contenido_dinamico, self, self.data_store)
+        self.trabajadores_module = RegistroTrabajadoresModule(self.contenido_dinamico, self, self.data_store)
+        self.asistencia_module = RegistroAsistenciaModule(self.contenido_dinamico, self, self.data_store)
+        self.vacaciones_module = RegistroVacacionesModule(self.contenido_dinamico, self, self.data_store)
 
-# Carga inicial
-cargar_bienvenida()
+        self._crear_botones_menu()
+        self._cargar_bienvenida()
 
-ventana.mainloop()
+    def _ocultar_frames(self):
+        for frame in self.contenido_dinamico.winfo_children():
+            frame.pack_forget()
+
+    def _cargar_bienvenida(self):
+        self._ocultar_frames()
+        self.bienvenida_module.show()
+
+    def _cargar_registro_trabajadores(self):
+        self._ocultar_frames()
+        self.trabajadores_module.show()
+
+    def _cargar_registro_asistencia(self):
+        self._ocultar_frames()
+        self.asistencia_module.show()
+
+    def _cargar_registro_vacaciones(self):
+        self._ocultar_frames()
+        self.vacaciones_module.show()
+
+    def _crear_botones_menu(self):
+        btn_bienvenida = tk.Button(self.menu_lateral, text="Bienvenida", bg='#34495e', fg="white", command=self._cargar_bienvenida)
+        btn_bienvenida.pack(fill="x", pady=5)
+
+        btn_registro_trab = tk.Button(self.menu_lateral, text="Registro Trabajadores", bg='#34495e', fg="white", command=self._cargar_registro_trabajadores)
+        btn_registro_trab.pack(fill="x", pady=5)
+
+        btn_registro_asistencia = tk.Button(self.menu_lateral, text="Registro Asistencia", bg='#34495e', fg="white", command=self._cargar_registro_asistencia)
+        btn_registro_asistencia.pack(fill="x", pady=5)
+
+        btn_registro_vacaciones = tk.Button(self.menu_lateral, text="Registro Vacaciones", bg='#34495e', fg="white", command=self._cargar_registro_vacaciones)
+        btn_registro_vacaciones.pack(fill="x", pady=5)
+
+        btn_salir = tk.Button(self.menu_lateral, text="Salir", bg='#34495e', fg="white", command=self.ventana.quit)
+        btn_salir.pack(fill="x", pady=5)
+
+    def run(self):
+        self.ventana.mainloop()
+
+if __name__ == "__main__":
+    app = HospitalApp()
+    app.run()
