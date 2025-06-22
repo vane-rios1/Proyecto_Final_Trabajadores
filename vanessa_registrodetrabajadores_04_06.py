@@ -74,7 +74,7 @@ ventana = tk.Tk()
 ventana.title("Sistema Hospitalario")
 ventana.geometry("1200x800")
 
-menu_lateral = tk.Frame(ventana, width=200, bg="#d9d9d9")
+menu_lateral = tk.Frame(ventana, width=200, bg="#2c3e50")
 menu_lateral.pack(side="left", fill="y")
 
 contenido_dinamico = tk.Frame(ventana)
@@ -89,7 +89,7 @@ def crear_bienvenida_frame():
     global bienvenida_frame
     if bienvenida_frame is None:
         bienvenida_frame = tk.Frame(contenido_dinamico, bg="#f0f0f0")
-        tk.Label(bienvenida_frame, text="Bienvenido al Sistema Hospitalario",
+        tk.Label(bienvenida_frame, text= "HOSPITAL RÍOS\nBienvenido al Sistema Hospitalario",
                  font=("Helvetica", 24, "bold"), fg="#2b2b2b", bg="#f0f0f0").pack(pady=100)
         tk.Label(bienvenida_frame, text="Seleccione una opción del menú para comenzar",
                  font=("Helvetica", 14), fg="#444", bg="#f0f0f0").pack()
@@ -725,19 +725,19 @@ def cargar_registro_vacaciones():
 
 # -- Botones menú lateral --
 
-btn_bienvenida = tk.Button(menu_lateral, text="Bienvenida", command=cargar_bienvenida)
+btn_bienvenida = tk.Button(menu_lateral, text="Bienvenida",bg='#34495e',fg="white", command=cargar_bienvenida)
 btn_bienvenida.pack(fill="x", pady=5)
 
-btn_registro_trab = tk.Button(menu_lateral, text="Registro Trabajadores", command=cargar_registro_trabajadores)
+btn_registro_trab = tk.Button(menu_lateral, text="Registro Trabajadores", bg='#34495e',fg="white",command=cargar_registro_trabajadores)
 btn_registro_trab.pack(fill="x", pady=5)
 
-btn_registro_asistencia = tk.Button(menu_lateral, text="Registro Asistencia", command=cargar_registro_asistencia)
+btn_registro_asistencia = tk.Button(menu_lateral, text="Registro Asistencia",bg='#34495e',fg="white", command=cargar_registro_asistencia)
 btn_registro_asistencia.pack(fill="x", pady=5)
 
-btn_registro_vacaciones = tk.Button(menu_lateral, text="Registro Vacaciones", command=cargar_registro_vacaciones)
+btn_registro_vacaciones = tk.Button(menu_lateral, text="Registro Vacaciones",bg='#34495e',fg="white", command=cargar_registro_vacaciones)
 btn_registro_vacaciones.pack(fill="x", pady=5)
 
-btn_salir = tk.Button(menu_lateral, text="Salir", command=ventana.quit)
+btn_salir = tk.Button(menu_lateral, text="Salir",bg='#34495e',fg="white", command=ventana.quit)
 btn_salir.pack(fill="x", pady=5)
 
 # Carga inicial
