@@ -1,0 +1,96 @@
+
+
+DIAGRAMA DE CLASES DEL HOSPITAL RIOS
+
+
+
++----------------+       +-------------------+
+|   HospitalApp  | <>----|    HospitalData   |
++----------------+       +-------------------+
+| - ventana      |       | - puestos_por_depto |
+| - menu_lateral |       | - cupo_jornada    |
+| - contenido_din|       | - historial_trab  |
+|                |       | - asistencia_regs |
+|                |       | - vacaciones_regs |
+|                |       | - dias_eco_regs   |
+|                |       | - periodo_extra_regs |
+|                |       | - contador_retardos |
+|                |       | - datos_trabajadores|
+|                |       | - ids_control     |
+|                |       | - dias_festivos   |
+|                |       | - horarios_turno  |
++----------------+       +-------------------+
+| + __init__()   |
+| - _ocultar_frames() |
+| - _cargar_bienvenida()|
+| - _cargar_registro_trabajadores()|
+| - _cargar_registro_asistencia()|
+| - _cargar_registro_vacaciones()|
+| - _crear_botones_menu()|
+| + run()        |
++----------------+
+        |  Agregación (tiene un)
+        |
+        +-------------------------------------------+
+        |                                           |
+        |                                           |
++-------------------+                          +-------------------+
+|    BaseModule     | <|-----------------------|  BienvenidaModule |
++-------------------+                          +-------------------+
+| # parent_frame    |                          | - welcome_label   |
+| # app             |                          +-------------------+
+| # data            |                          | + __init__()      |
+| # frame           |                          | + show()          |
++-------------------+                          +-------------------+
+| + __init__(p,a,d) |
+| + hide()          |
+| + show()          |
+| + create_labeled_frame(p,t)|
+| + create_treeview_with_scroll(p,c,h)|
++-------------------+
+        ^ ^ ^ ^
+        | | | | Herencia (es un)
+        | | | |
+        | | | +-------------------+
+        | | +---|RegistroTrabajadoresModule|
+        | |     +-------------------+
+        | |     | - puesto_combo    |
+        | |     | - tabla_trabajadores|
+        | |     | - datos_entrada   |
+        | |     +-------------------+
+        | |     | + __init__()      |
+        | |     | - _create_widgets()|
+        | |     | + show()          |
+        | |     | - _actualizar_puestos()|
+        | |     | - _validar_datos()|
+        | |     | - _registrar_trabajador()|
+        | |     | - _actualizar_tabla_historial()|
+        | |     +-------------------+
+        | |
+        | +---------------------------+
+        |                             |
+        |                             |
+        |  +-------------------+      +-------------------+
+        +--|RegistroAsistenciaModule|  |RegistroVacacionesModule|
+           +-------------------+      +-------------------+
+           | - lista_ids_cb    |      | - entry_nc        |
+           | - tabla_asistencia|      | - entradas_autocompl|
+           | - var_id          |      | - division_cb     |
+           | - var_nombre      |      | - quincena_cb     |
+           | ... (otras StringVar)|    | - dias_eco_cb     |
+           +-------------------+      | - periodo_cb      |
+           | + __init__()      |      | - tree_vac        |
+           | - _create_widgets()|      | - tree_eco        |
+           | + show()          |      | - tree_pe         |
+           | - _llenar_campos()|      +-------------------+
+           | - _calcular_estado_entrada()|  | + __init__()      |
+           | - _actualizar_contador_retardos()|  | - _create_widgets()|
+           | - _registrar_entrada()|      | + show()          |
+           | - _registrar_salida()|       | - _autocompletar()|
+           | - _actualizar_tabla_asistencia()| | - _actualizar_quincenas()|
+           | + update_id_list()|      | - _contar_dias_eco()|
+           +-------------------+      | - _registrar_vacaciones()|
+                                      | - _limpiar_campos()|
+                                      | - _actualizar_tablas_vacaciones()|
+                                      | + update_id_list()|
+                                      +-------------------+
